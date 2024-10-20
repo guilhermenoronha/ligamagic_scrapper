@@ -1,0 +1,3 @@
+card_name;store_name;card_quality;stock;cheaper_cards_amount;min_value;avg_value;store_value;premium_discount_on_min_value;premium_discount_on_avg_value
+Altar of the Brood;VAULT;SP;4;31;15.48;36.38;35.5;1.29328165374677;-0.024189114898295783
+Reinforced Ronin;VAULT;NM;3;75;0.35;2.1;2.5;6.142857142857143;0.19047619047619047
