@@ -2,8 +2,10 @@ import re
 from selenium.webdriver import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException
-from selenium.webdriver import Chrome
+from selenium.webdriver import Chrome, ChromeOptions
 from selenium.webdriver.remote.webelement import WebElement
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
 
 
 def get_card_quality(card_quality: str = None, card_quality_id: int = None):
@@ -14,6 +16,7 @@ def get_card_quality(card_quality: str = None, card_quality_id: int = None):
         - Utilize a variável card_quality_id se quiser retornar a sigla da qualidade
 
     Representação da Sigla X Liga Magic:
+        - 1: M (Mint)
         - 2: NM (Near Mint)
         - 3: SP (Slightly Played)
         - 4: MP (Moderate Player)
@@ -27,13 +30,13 @@ def get_card_quality(card_quality: str = None, card_quality_id: int = None):
     Returns:
         Código da Liga Magic ou a Sigla referente à qualidade da carta.
     """
-    card_conditions = {"D": 6, "HP": 5, "MP": 4, "SP": 3, "NM": 2}
+    card_conditions = {"D": 6, "HP": 5, "MP": 4, "SP": 3, "NM": 2, "M": 1}
     if card_quality is not None:
         card_code = card_conditions.get(card_quality)
         if card_code is None:
             raise ValueError(
-                "Condição do card desconhecida %s. Condições aceitas: D, HP, MP, SP, e NM",
-                card_quality,
+                "Condição do card desconhecida %s. Condições aceitas: D, HP, MP, SP, NM, M"
+                % card_quality,
             )
         else:
             return card_code
@@ -44,7 +47,7 @@ def get_card_quality(card_quality: str = None, card_quality_id: int = None):
         )
         if card_code is None:
             raise ValueError(
-                "Condição do card desconhecida %s. Condições aceitas: 2, 3, 4, 5 e 6",
+                "Condição do card desconhecida %s. Condições aceitas: 1, 2, 3, 4, 5 e 6",
                 card_quality,
             )
         else:
@@ -67,7 +70,7 @@ def get_store_card_quality(text: str) -> str:
     """
     try:
         card_quality = re.search(r"^[A-Z]+", text).group()
-        return card_quality.upper() if card_quality in ("D", "HP", "MP", "SP", "NM") else None
+        return card_quality.upper() if card_quality in ("D", "HP", "MP", "SP", "NM", "M") else None
     except:
         return None
     
@@ -76,10 +79,10 @@ def get_store_card_stock(text: str) -> str:
 
     Args:
         text (str): Texto contendo o valor da carta.
-        Padrão conhecido: MP\n-\n0 unid. R$ 3,00\nAvise quando chegar.
+            Padrão conhecido: MP\n-\n0 unid. R$ 3,00\nAvise quando chegar.
 
     Returns:
-        str: Retorna os valores D, HP, MP, SP ou NM quando encontrado. Vazio se não encontrar nada.
+        str: Retorna os valores D, HP, MP, SP, NM, M quando encontrado. Vazio se não encontrar nada.
     """
     try:
         return int(re.search(r"\d+", text).group())
@@ -104,7 +107,7 @@ def strip_price(price_in_text: str) -> float:
         return None
 
 
-def get_min_card_value(driver: Chrome) -> float:
+def get_card_value(driver: Chrome, div_name: str) -> float:
     """Retorna o texto onde fica localizado o menor valor da carta no site da Liga Magic
 
     Args:
@@ -113,29 +116,15 @@ def get_min_card_value(driver: Chrome) -> float:
     Returns:
         float: menor valor encontrado na página.
     """
-    return strip_price(
-        driver.find_element(
-            By.XPATH, '//*[@id="card-info"]/div[5]/div[2]/div/div[2]'
-        ).text
-    )
-
-
-def get_avg_card_value(driver: Chrome) -> float:
-    """Retorna o texto onde fica localizado o valor médio da carta no site da Liga Magic
-
-    Args:
-        driver (Chrome): drive conectado na url da carta
-
-    Returns:
-        float: valor médio encontrado na página.
-    """
-    
-    return strip_price(
-        driver.find_element(
-            By.XPATH, '//*[@id="card-info"]/div[5]/div[2]/div/div[4]'
-        ).text
-    )
-
+    if div_name not in ("min", "medium"):
+        raise ValueError("div_name encontrado desconhecido. Valores aceitos: min, medium. Valor encontrado: %s", div_name)
+    all_prices = driver.find_elements(By.CSS_SELECTOR, f"div.{div_name} > div.price")
+    min_value = float("inf")
+    for price in all_prices:
+        card_price = strip_price(price.text)
+        if card_price < min_value:
+            min_value = card_price
+    return min_value
 
 def get_lm_set(driver: Chrome, set_num: int) -> WebElement:
     return driver.find_element(By.CSS_SELECTOR, f"#edcard_{set_num}> img:nth-child(1)")
@@ -156,34 +145,40 @@ def get_lm_card_value(driver: Chrome, value_type: str) -> float:
     Returns:
         float: _description_
     """
+    def _return_price_element(driver: Chrome, value_type: str):
+        if value_type == "MIN":
+            return get_card_value(driver, "min")
+        else:
+            return get_card_value(driver, "medium")
+        
+
     if value_type not in ("MIN", "AVG"):
-        raise ValueError("Value_type encontrado: %s. value_types aceitos: MIN, AVG.")
+        raise ValueError("Value_type encontrado: %s. value_types aceitos: MIN, AVG." % value_type)
 
     action = ActionChains(driver)
     global_min = float("inf")
-    card_edition = 0
-    while True:
-        try:
-            card_edition_element = get_lm_set(driver, card_edition)
-            action.move_to_element(card_edition_element).click().perform()
 
-            if value_type == "MIN":
-                min_value = get_min_card_value(driver)
-            else:
-                min_value = get_avg_card_value(driver)
-
-            global_min = (
-                min_value if min_value < global_min and min_value > 0 else global_min
-            )
-            card_edition += 1
-        except NoSuchElementException:
-            if global_min == float("inf"):
-                raise NoSuchElementException(
-                    "Elemento não encontrado para a seguinte url: %s",
-                    driver.current_url,
+    card_edition_elements = driver.find_elements(By.CLASS_NAME, "edition-icon")
+    if len(card_edition_elements) == 0: # card com apenas uma edição
+        return _return_price_element(driver, value_type)
+    else:
+        for card_edition_element in card_edition_elements:
+            try:
+                action.move_to_element(card_edition_element).click().perform()                
+                min_value = _return_price_element(driver, value_type)
+                global_min = (
+                    min_value if min_value < global_min and min_value > 0 else global_min
                 )
-            else:
-                return global_min
+            except NoSuchElementException:
+                if global_min == float("inf"):
+                    raise NoSuchElementException(
+                        "Elemento não encontrado para a seguinte url: %s",
+                        driver.current_url,
+                    )
+                else:
+                    return global_min
+        return global_min
+
 
 def get_store_card_price(text: str) -> int:
     """Retorna o preço encontrado na loja.
@@ -200,3 +195,32 @@ def get_store_card_price(text: str) -> int:
         return strip_price(price)
     except:
         return None
+
+def get_driver_instance() -> Chrome:
+    """Função que retorna uma instância do Chrome para ser usada como web scrapper.
+
+    Returns:
+        Chrome: Instância do Chrome.
+    """
+    # algumas configurações para o webdriver
+    chrome_options = ChromeOptions()
+    chrome_options.add_argument("--window-size=1920,1080")
+    chrome_options.add_argument("--disable-extensions")
+    chrome_options.add_argument("--proxy-server='direct://'")
+    chrome_options.add_argument("--proxy-bypass-list=*")
+    chrome_options.add_argument("--start-maximized")
+    chrome_options.add_argument("--headless")
+    chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--ignore-certificate-errors")
+    chrome_options.add_argument("--disable-images")
+
+    # instanciando a versão do webdriver que será instalada na máquina local
+    service = Service(ChromeDriverManager().install())
+
+    # instanciando o webdriver
+    driver = Chrome(service=service, options=chrome_options)
+    driver.implicitly_wait(2)
+    driver.set_page_load_timeout(600)
+    return driver

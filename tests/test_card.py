@@ -30,11 +30,13 @@ def test_get_card_quality():
     assert wp.get_card_quality(card_quality="MP") == 4
     assert wp.get_card_quality(card_quality="SP") == 3
     assert wp.get_card_quality(card_quality="NM") == 2
+    assert wp.get_card_quality(card_quality="M") == 1
     assert wp.get_card_quality(card_quality_id=6) == "D"
     assert wp.get_card_quality(card_quality_id=5) == "HP"
     assert wp.get_card_quality(card_quality_id=4) == "MP"
     assert wp.get_card_quality(card_quality_id=3) == "SP"
     assert wp.get_card_quality(card_quality_id=2) == "NM"
+    assert wp.get_card_quality(card_quality_id=1) == "M"
 
 
 def test_get_card_quality_fails():
@@ -46,7 +48,7 @@ def test_get_card_quality_fails():
         wp.get_card_quality(card_quality="FF")
     # invalic card_quality_id
     with pytest.raises(Exception):
-        wp.get_card_quality(card_quality_id=1)
+        wp.get_card_quality(card_quality_id=7)
 
 
 def test_strip_price():
