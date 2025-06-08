@@ -1,3 +1,3 @@
-name,url,discount
-VAULT,https://www.vaultofcards.com.br/,5
-UGCardShop,https://www.ugcardshop.com.br/,
+name;url;discount;ligamagic_store_code
+VAULT;https://www.vaultofcards.com.br/;5;45050
+UGCardShop;https://www.ugcardshop.com.br/;;312903

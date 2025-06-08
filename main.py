@@ -73,7 +73,7 @@ else:
     MAXIMUM_CARD_PRICE = float("inf")
 
 
-user_stores = pd.read_csv(INPUTS + "stores.csv", sep=",")
+user_stores = pd.read_csv(INPUTS + "stores.csv", sep=";")
 user_stores["name"] = user_stores["name"].str.upper()
 
 # Bloco para pegar a melhor oferta dentre os parâmetros passados pelo usuário
@@ -90,8 +90,9 @@ for card_name in get_cards(INPUTS + "cardlist.txt"):
     card_url = card_name.replace(" ", "+")
     driver.get(f"https://www.ligamagic.com.br/?view=cards/card&card={card_url}")
 
-    min_card_value = wp.get_lm_card_value(driver, "MIN")
-    avg_card_value = wp.get_lm_card_value(driver, "AVG")
+    min_card_value, avg_card_value = wp.get_lm_min_avg_card_value(driver)
+    #min_card_value = wp.get_lm_card_value(driver, "MIN")
+    #avg_card_value = wp.get_lm_card_value(driver, "AVG")
 
     # Carta está mais cara do que estou disposto a pagar, então não procuro valores.
     if min_card_value > MAXIMUM_CARD_PRICE:
@@ -147,7 +148,7 @@ for card_name in get_cards(INPUTS + "cardlist.txt"):
 
         card_quality = store.find_element(
             By.XPATH,
-            f"/html/body/main/div[1]/div[6]/div[2]/div[3]/div[{count + 1}]/div[3]/div[1]/div[2]/div[2]",
+            f"/html/body/main/div[1]/div[7]/div[2]/div[4]/div[{count + 1}]/div[3]/div[1]/div[2]/div[2]",
         ).text
         card_quality = card_quality if card_quality != "" else "D"
 
@@ -155,26 +156,35 @@ for card_name in get_cards(INPUTS + "cardlist.txt"):
 
         card_language = store.find_element(
             By.XPATH,
-            f"/html/body/main/div[1]/div[6]/div[2]/div[3]/div[{count + 1}]/div[3]/div[1]/div[2]/div[1]/img",
+            f"/html/body/main/div[1]/div[7]/div[2]/div[4]/div[{count + 1}]/div[3]/div[1]/div[2]/div[1]/img",
         ).accessible_name.upper()
         store_image = store.find_element(
             By.XPATH,
-            f"/html/body/main/div[1]/div[6]/div[2]/div[3]/div[{count + 1}]/div[2]/div[1]/a/div/img",
+            f"/html/body/main/div[1]/div[7]/div[2]/div[4]/div[{count + 1}]/div[2]/div[1]/a/div/img",
         )
-        store_code = re.search(r"(\d+)", store_image.get_attribute("data-src")).group(0)
-        driver.execute_script(
-            f"window.open('https://www.ligamagic.com.br/?view=mp/showcase/home&id={store_code}', '_blank');"
-        )
-        driver.switch_to.window(driver.window_handles[-1])
-        sleep(1)
-        store_name = driver.find_element(
-            By.CSS_SELECTOR, ".container-store-name .name div:first-child"
-        ).text.upper()
-        driver.close()
-        driver.switch_to.window(original_window)
+        store_code = int(re.search(r"(\d+)", store_image.get_attribute("data-src")).group(0))
+        
+        # Quando não há o código da loja. Método mais lento, pois visita pagina por pagina para achar o nome.
+        if user_stores["ligamagic_store_code"].count() == 0:
+            driver.execute_script(
+                f"window.open('https://www.ligamagic.com.br/?view=mp/showcase/home&id={store_code}', '_blank');"
+            )
+            driver.switch_to.window(driver.window_handles[-1])
+            sleep(1)
+            store_name = driver.find_element(
+                By.CSS_SELECTOR, ".container-store-name .name div:first-child"
+            ).text.upper()
+            driver.close()
+            driver.switch_to.window(original_window)
+        else:
+            if not user_stores["ligamagic_store_code"].isin([store_code]).any():
+                store_name = '' 
+            else:
+                store_name = user_stores.loc[user_stores['ligamagic_store_code'] == store_code, 'name'].iloc[0]
 
         if (
             user_stores["name"].isin([store_name]).any()
+            #store_code in store_codes
             and card_language in USER_ACCEPTED_LANGUAGES
             and card_quality_code <= USER_CARD_QUALITY_CODE
         ):
@@ -247,7 +257,7 @@ for card_name in get_cards(INPUTS + "cardlist.txt"):
                     total_cards += card_stock
                     final_card_price = card_price
 
-        cartas_web_dic = get_card_dataframe(
+        cartas_web_df = get_card_dataframe(
             legible_card_name,
             min_card_value,
             avg_card_value,
@@ -259,7 +269,7 @@ for card_name in get_cards(INPUTS + "cardlist.txt"):
             (final_card_price / min_card_value) - 1,
             (final_card_price / avg_card_value) - 1,
         )
-        print("Salvando a carta:,", legible_card_name)
+        print("Salvando a carta", legible_card_name)
     else:
         cartas_web_df = get_card_dataframe(
             legible_card_name, min_card_value, avg_card_value

@@ -2,10 +2,8 @@ import re
 from selenium.webdriver import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException
-from selenium.webdriver import Chrome, ChromeOptions
 from selenium.webdriver.remote.webelement import WebElement
-from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
+from seleniumbase import Driver
 
 
 def get_card_quality(card_quality: str = None, card_quality_id: int = None):
@@ -107,7 +105,7 @@ def strip_price(price_in_text: str) -> float:
         return None
 
 
-def get_card_value(driver: Chrome, div_name: str) -> float:
+def get_card_value(driver: Driver, div_name: str) -> float:
     """Retorna o texto onde fica localizado o menor valor da carta no site da Liga Magic
 
     Args:
@@ -126,11 +124,41 @@ def get_card_value(driver: Chrome, div_name: str) -> float:
             min_value = card_price
     return min_value
 
-def get_lm_set(driver: Chrome, set_num: int) -> WebElement:
+def get_lm_set(driver: Driver, set_num: int) -> WebElement:
     return driver.find_element(By.CSS_SELECTOR, f"#edcard_{set_num}> img:nth-child(1)")
 
+def get_lm_min_avg_card_value(driver: Driver) -> float:
+    """Retorna o menor valor do card na Liga Magic entre todas as edições possíveis.
+    Cards com valor 0 são ignorados.
 
-def get_lm_card_value(driver: Chrome, value_type: str) -> float:
+    Args:
+        driver (Chrome): Driver Selenium
+
+    Returns:
+        list[float]: posição 0: valor minimo. posição 1: valor médio
+    """
+    action = ActionChains(driver)
+    min = []
+    avg = []
+    result = []
+
+    card_edition_elements = driver.find_elements(By.CLASS_NAME, "edition-icon")
+    if len(card_edition_elements) == 0: # card com apenas uma edição
+        min.append(get_card_value(driver, "min"))
+        avg.append(get_card_value(driver, "medium"))
+    else:
+        for card_edition_element in card_edition_elements:
+            action.move_to_element(card_edition_element).click().perform()                
+            min.append(get_card_value(driver, "min"))
+            avg.append(get_card_value(driver, "medium"))
+
+    min.sort()
+    avg.sort()    
+    return min[0], avg[0]
+
+# DEPRECATED: REMOVER NAS PRÓXIMAS VERSÕES
+@DeprecationWarning
+def get_lm_card_value(driver: Driver, value_type: str) -> float:
     """Retorna o menor valor do card na Liga Magic entre todas as edições possíveis.
     Cards com valor 0 são ignorados.
 
@@ -145,7 +173,7 @@ def get_lm_card_value(driver: Chrome, value_type: str) -> float:
     Returns:
         float: _description_
     """
-    def _return_price_element(driver: Chrome, value_type: str):
+    def _return_price_element(driver: Driver, value_type: str):
         if value_type == "MIN":
             return get_card_value(driver, "min")
         else:
@@ -196,31 +224,22 @@ def get_store_card_price(text: str) -> int:
     except:
         return None
 
-def get_driver_instance() -> Chrome:
+def get_driver_instance() -> Driver:
     """Função que retorna uma instância do Chrome para ser usada como web scrapper.
 
     Returns:
         Chrome: Instância do Chrome.
     """
-    # algumas configurações para o webdriver
-    chrome_options = ChromeOptions()
-    chrome_options.add_argument("--window-size=1920,1080")
-    chrome_options.add_argument("--disable-extensions")
-    chrome_options.add_argument("--proxy-server='direct://'")
-    chrome_options.add_argument("--proxy-bypass-list=*")
-    chrome_options.add_argument("--start-maximized")
-    chrome_options.add_argument("--headless")
-    chrome_options.add_argument("--disable-gpu")
-    chrome_options.add_argument("--disable-dev-shm-usage")
-    chrome_options.add_argument("--no-sandbox")
-    chrome_options.add_argument("--ignore-certificate-errors")
-    chrome_options.add_argument("--disable-images")
-
-    # instanciando a versão do webdriver que será instalada na máquina local
-    service = Service(ChromeDriverManager().install())
-
-    # instanciando o webdriver
-    driver = Chrome(service=service, options=chrome_options)
-    driver.implicitly_wait(2)
+    driver = Driver(
+        uc=True,
+        headless=True,
+    )
+    # Configurações adicionais
     driver.set_page_load_timeout(600)
+    driver.implicitly_wait(2)
+
+    # Configurações adicionais que podem ser úteis
+    driver.set_page_load_timeout(600)
+    driver.implicitly_wait(2)
+
     return driver

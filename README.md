@@ -51,15 +51,21 @@ Segue o passo a passo para instalar e configurar o projeto.
 
 #### Arquivo .env
 
-- Crie um arquivo .env na raiz do projeto. Ele deve conter duas configurações:
+- Crie um arquivo .env na raiz do projeto. Ele deve conter as seguintes configurações:
     
-    - **MINIMAL_CARD_QUALITY**: qual é qualidade mínima que você aceita durante a busca de cartas? Valores aceitos: D, HP, MP, SP, NM. 
+    - **MINIMAL_CARD_QUALITY**: qual é qualidade mínima que você aceita durante a busca de cartas? Valores aceitos: D, HP, MP, SP, NM e M. 
     
         Exemplo de uso:  MINIMAL_CARD_QUALITY=HP
 
     - **ACCEPTED_LANGUAGES**: quais são os idiomas que você aceita durante a busca de carta? Esta variável aceita múltiplos valores separados por vírgula.
     
         Exemplo de uso: ACCEPTED_LANGUAGES=Português,Inglês,Português / Inglês
+
+    - **MAXIMUM_CARD_PRICE** (Opcional): qual é o preço máximo que você está disposto a pagar numa carta de magic? Esse campo é útil pra deixar o script mais rápido e pular as cartas cujo o preço mínimo é maior do que você pagaria.
+
+        Exemplo de uso:  MAXIMUM_CARD_PRICE=50
+
+    
 
 #### Arquivo cardlist.txt
 
@@ -72,6 +78,7 @@ Crie um arquivo stores_example.csv na pasta `assets/inputs`. Este arquivo deve c
 - **name**: nome da loja. O nome deve ser o mesmo que consta no site da Liga Magic. Para saber qual é o nome da sua loja na Liga Magic, veja a seção X.
 - **url**: url da loja.
 - **discount**: coloca um valor em percentual caso a loja ofereça algum desconto em pagamentos pix, etc.
+- **ligamagic_store_code**: código da loja no site da liga magic. Quando este parâmetro é colocado, o script fica muito mais rápido. Veja o FAQ para saber qual como pegar o código da loja.
 
 Um exemplo de como preencher as lojas é encontrado em `assets/inputs/stores_example.txt`
 
@@ -97,6 +104,14 @@ Em seguida repita os passos mostrados na figura abaixo:
 ![teste](https://github.com/user-attachments/assets/ed10c9c2-dca9-41f6-9d9e-4ec71b63ccef)
 
 Observe que neste caso, a Vault of Cards está cadastrada apenas como Vault na Liga Magic.
+
+### Como pegar o código da loja?
+
+Abra o site da Liga Magic, clique numa carta qualquer e procure pela oferta da loja que você quer pegar o código. Clique no banner da loja para ser direcionado para o site da loja dentro do portal da Liga Magic.
+
+![teste](https://github.com/user-attachments/assets/50b08a46-ce92-4b9c-a493-ba70286ae622)
+
+Observe a URL da loja e procure pelo campo ID: https://www.ligamagic.com.br/?view=mp/showcase/home&id=265520&tcg=25281281. Neste exemplo o ID é **265520**.
 
 ### O script está lento, é comum?
 
