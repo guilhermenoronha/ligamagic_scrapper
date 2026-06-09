@@ -157,7 +157,7 @@ for card_name in get_cards(INPUTS + "cardlist.txt"):
         card_language = store.find_element(
             By.XPATH,
             f"/html/body/main/div[1]/div[7]/div[2]/div[4]/div[{count + 1}]/div[3]/div[1]/div[2]/div[1]/img",
-        ).accessible_name.upper()
+        ).get_attribute("title").upper()
         store_image = store.find_element(
             By.XPATH,
             f"/html/body/main/div[1]/div[7]/div[2]/div[4]/div[{count + 1}]/div[2]/div[1]/a/div/img",
@@ -230,7 +230,7 @@ for card_name in get_cards(INPUTS + "cardlist.txt"):
 
         card_languages = driver.find_elements(
             "xpath",
-            '//div[@class="table-cards-body-cell tooltip-item text-center"]//img',
+            '//div[contains(@class, "table-cards-body-cell tooltip-item text-center")]//img',
         )
 
         for i in range(len(card_languages)):
